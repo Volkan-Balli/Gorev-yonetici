@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Görev Yönetimi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 font-sans text-gray-800">
+    <div id="login-screen" class="max-w-md mx-auto p-6 bg-white shadow-lg rounded-lg mt-20">
+        <h2 class="text-3xl font-semibold text-center text-blue-600 mb-6">Giriş Yapın</h2>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Kullanıcı Adı" class="px-4 py-2 w-full mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <input type="password" id="password" placeholder="Şifre" class="px-4 py-2 w-full mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <button type="submit" class="w-full px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Giriş Yap</button>
+        </form>
+        <p class="mt-4 text-center text-red-500" id="login-error-message"></p>
+    </div>
+
+    <div id="task-management-screen" class="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg mt-10 hidden">
+        <h2 class="text-3xl font-semibold text-center text-blue-600 mb-6">Hoş Geldiniz!</h2>
+        <form class="flex justify-between items-center mb-6" id="task-form">
+            <input type="text" placeholder="Görev Adı" class="px-4 py-2 w-2/3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" id="task-name" name="task-name" aria-label="Görev Adı">
+            <button type="submit" class="ml-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600" id="add-task-btn" aria-label="Görev Ekle">Görev Ekle</button>
+        </form>
+
+        <div class="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg mt-6">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-800">Görevlerim</h2>
+            <div class="mb-4 flex space-x-4 justify-center">
+                <button type="button" class="px-4 py-2 bg-blue-200 rounded-md hover:bg-blue-300" id="all-tasks-btn" aria-label="Tüm Görevler">TÜMÜ</button>
+                <button type="button" class="px-4 py-2 bg-blue-200 rounded-md hover:bg-blue-300" id="to-do-btn" aria-label="Yapılacak Görevler">YAPILACAK</button>
+                <button type="button" class="px-4 py-2 bg-blue-200 rounded-md hover:bg-blue-300" id="in-progress-btn" aria-label="Yapılıyor Görevler">YAPILIYOR</button>
+                <button type="button" class="px-4 py-2 bg-blue-200 rounded-md hover:bg-blue-300" id="completed-btn" aria-label="Tamamlanan Görevler">TAMAMLANDI</button>
+            </div>
+
+            <div class="flex justify-center mb-6">
+                <button type="button" class="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600" id="reset-all-btn" aria-label="Tüm Görevleri Sıfırla">Tüm Görevleri Sıfırla</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border-collapse border border-gray-300">
+                    <thead class="bg-blue-100">
+                        <tr>
+                            <th class="px-6 py-3 border-b text-left text-gray-600">Görev Adı</th>
+                            <th class="px-6 py-3 border-b text-left text-gray-600">Durum</th>
+                            <th class="px-6 py-3 border-b text-left text-gray-600">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-table-body">
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-6">
+                <h3 class="text-xl font-semibold">Raporlama</h3>
+                <p id="total-tasks" class="text-lg">Toplam Görev Sayısı: 0</p>
+                <p id="completed-tasks" class="text-lg">Tamamlanmış Görev Sayısı: 0</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const validUsername = "admin";
+        const validPassword = "1234";
+
+        const loginScreen = document.getElementById('login-screen');
+        const taskManagementScreen = document.getElementById('task-management-screen');
+        const loginForm = document.getElementById('login-form');
+        const loginErrorMessage = document.getElementById('login-error-message');
+        const taskForm = document.getElementById('task-form');
+        const taskNameInput = document.getElementById('task-name');
+        const taskTableBody = document.getElementById('task-table-body');
+        const totalTasksElement = document.getElementById('total-tasks');
+        const completedTasksElement = document.getElementById('completed-tasks');
+        const allTasksButton = document.getElementById('all-tasks-btn');
+        const toDoButton = document.getElementById('to-do-btn');
+        const inProgressButton = document.getElementById('in-progress-btn');
+        const completedButton = document.getElementById('completed-btn');
+        const resetAllButton = document.getElementById('reset-all-btn');
+
+        let tasks = [];
+
+        loginForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (username === validUsername && password === validPassword) {
+                localStorage.setItem('loggedIn', 'true');
+                loginScreen.classList.add('hidden');
+                taskManagementScreen.classList.remove('hidden');
+                renderTasks();
+            } else {
+                loginErrorMessage.textContent = "Kullanıcı adı veya şifre hatalı!";
+            }
+        });
+
+        if (localStorage.getItem('loggedIn') !== 'true') {
+            loginScreen.classList.remove('hidden');
+            taskManagementScreen.classList.add('hidden');
+        }
+
+        taskForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const taskName = taskNameInput.value.trim();
+
+            if (taskName) {
+                const newTask = {
+                    id: tasks.length + 1,
+                    name: taskName,
+                    status: 'todo',
+                };
+
+                tasks.push(newTask);
+                taskNameInput.value = '';
+                renderTasks();
+            }
+        });
+
+        allTasksButton.addEventListener('click', () => renderTasks());
+        toDoButton.addEventListener('click', () => renderTasks('todo'));
+        inProgressButton.addEventListener('click', () => renderTasks('in-progress'));
+        completedButton.addEventListener('click', () => renderTasks('completed'));
+
+        resetAllButton.addEventListener('click', () => {
+            tasks = [];
+            renderTasks();
+        });
+
+        function renderTasks(filter = '') {
+            taskTableBody.innerHTML = '';
+
+            const filteredTasks = filter ? tasks.filter(task => task.status === filter) : tasks;
+
+            filteredTasks.forEach(task => {
+                const taskRow = document.createElement('tr');
+
+                if (task.status === 'completed') {
+                    taskRow.classList.add('bg-red-200');
+                }
+
+                const taskNameCell = document.createElement('td');
+                taskNameCell.classList.add('px-6', 'py-3', 'border-b');
+                taskNameCell.textContent = task.name;
+
+                const statusSelectCell = document.createElement('td');
+                const statusSelect = document.createElement('select');
+                statusSelect.classList.add('block', 'w-32', 'px-2', 'py-1', 'mt-1', 'border', 'border-gray-300', 'rounded-md', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500', 'focus:border-blue-500');
+                statusSelect.innerHTML = `
+                    <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>Yapılacak</option>
+                    <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>Yapılıyor</option>
+                    <option value="completed" ${task.status === 'completed' ? 'selected' : ''}>Tamamlandı</option>
+                `;
+                statusSelect.addEventListener('change', (e) => updateTaskStatus(task.id, e.target.value));
+                statusSelectCell.appendChild(statusSelect);
+
+                const actionButtonCell = document.createElement('td');
+                const actionButton = document.createElement('button');
+                actionButton.classList.add('px-4', 'py-2', 'bg-green-200', 'rounded-md', 'hover:bg-green-300');
+                actionButton.textContent = 'İşlem';
+                actionButton.addEventListener('click', () => alert(`Task ${task.id} Atama`));
+                actionButtonCell.appendChild(actionButton);
+
+                taskRow.appendChild(taskNameCell);
+                taskRow.appendChild(statusSelectCell);
+                taskRow.appendChild(actionButtonCell);
+                taskTableBody.appendChild(taskRow);
+            });
+
+            totalTasksElement.textContent = `Toplam Görev Sayısı: ${tasks.length}`;
+            completedTasksElement.textContent = `Tamamlanmış Görev Sayısı: ${tasks.filter(task => task.status === 'completed').length}`;
+        }
+
+        function updateTaskStatus(taskId, newStatus) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.status = newStatus;
+                renderTasks();
+            }
+        }
+
+    </script>
+</body>
+
+</html>
